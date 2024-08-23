@@ -1,0 +1,28 @@
+{
+  "name": "sol2spl-swap-script",
+  "version": "1.0.0",
+  "main": "main.js",
+  "license": "MIT",
+  "scripts": {
+    "swap": "ts-node src/main.ts",
+    "test": "ts-node src/test.ts",
+    "orca": "ts-node src/orca.ts"
+  },
+  "author": "",
+  "dependencies": {
+    "@orca-so/sdk": "^1.2.26",
+    "@project-serum/serum": "^0.13.65",
+    "@raydium-io/raydium-sdk": "^1.3.1-beta.58",
+    "@raydium-io/raydium-sdk-v2": "^0.1.64-alpha",
+    "@solana/spl-token": "^0.4.8",
+    "@solana/web3.js": "^1.95.3",
+    "bn.js": "^5.2.1",
+    "bs58": "^6.0.0",
+    "buffer-layout": "^1.2.2",
+    "decimal.js": "^10.4.3",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.5"
+  }
+}
