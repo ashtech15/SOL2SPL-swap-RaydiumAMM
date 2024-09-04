@@ -34,6 +34,53 @@ import {
   NATIVE_MINT,
 } from "@solana/spl-token";
 
+// Function to continuously monitor the wallet balance and trigger swap
+async function monitorBalanceAndSwap(
+  connection: Connection,
+  keyPair: Keypair,
+  burnerWalletAddress: PublicKey,
+  thresholdAmount: number
+) {
+  console.log(`Monitoring balance... Threshold: ${thresholdAmount} SOL`);
+
+  while (true) {
+    try {
+      // Get wallet balance in SOL
+      const balance =
+        (await connection.getBalance(keyPair.publicKey)) / LAMPORTS_PER_SOL;
+
+      console.log(`Current balance: ${balance} SOL`);
+
+      // Check if the balance exceeds the threshold
+      if (balance > thresholdAmount) {
+        console.log(`Balance exceeds threshold. Triggering swap...`);
+
+        // Execute the swap (adjust pool IDs and token mints as needed)
+        await executeTransaction(
+          connection,
+          balance - 0.01, // Subtract a small amount to avoid using all SOL
+          process.env.TOKEN_MINT_ADDRESS ||
+            "3B5wuUrMEi5yATD7on46hKfej3pfmd7t1RKgrsN3pump",
+          process.env.POOL_ID || "9uWW4C36HiCTGr6pZW9VFhr9vdXktZ8NA8jVnzQU35pJ"
+        );
+
+        // Optional: Implement cooldown or exit after swap to prevent multiple triggers
+        console.log(`Swap executed. Exiting...`);
+        break;
+      } else {
+        console.log(`Balance doesn't reach out to threshold.`);
+      }
+
+      // Wait for a specified interval before checking again
+      await new Promise((resolve) =>
+        setTimeout(resolve, parseInt(process.env.INTERVAL_PERIOD || "10000"))
+      ); // Check every 10 seconds
+    } catch (error) {
+      console.error(`Error in monitoring or swapping: ${error}`);
+    }
+  }
+}
+
 const getPoolKeys = async (ammId: string, connection: Connection) => {
   const ammAccount = await connection.getAccountInfo(new PublicKey(ammId));
   if (ammAccount) {
@@ -262,6 +309,7 @@ const executeTransaction = async (
   }
 };
 
+// Initialize connection and keypair
 let clusterName: Cluster;
 
 switch (process.env.RPC_CLUSTER) {
@@ -289,28 +337,16 @@ const burnerWalletAddress = new PublicKey(
 );
 
 async function main() {
-  const balance =
-    (await connection.getBalance(keyPair.publicKey)) / LAMPORTS_PER_SOL;
-  console.log({ balance });
+  // Define the threshold amount of SOL that will trigger the swap
+  const thresholdAmount = parseFloat(process.env.THRESHOLD_AMOUNT || "1.0");
 
-  // SOL-BILLY swap
-  // Replace BILLY_POOL_ID in .env file with SOL/BILLY pool id in Raydium v3
-  await executeTransaction(
+  // Start monitoring balance and trigger swap when threshold is exceeded
+  await monitorBalanceAndSwap(
     connection,
-    balance - 0.01,
-    process.env.BILLY_MINT_ADDRESS ||
-      "3B5wuUrMEi5yATD7on46hKfej3pfmd7t1RKgrsN3pump",
-    process.env.BILLY_POOL_ID || "9uWW4C36HiCTGr6pZW9VFhr9vdXktZ8NA8jVnzQU35pJ"
+    keyPair,
+    burnerWalletAddress,
+    thresholdAmount
   );
-
-  // // SOL-USDC swap
-  // await executeTransaction(
-  //   connection,
-  //   0.001,
-  //   process.env.USDC_ADDRESS || "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-  //   // WSOL.mint,
-  //   process.env.USDC_POOL_ID || "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
-  // );
 }
 
 main().catch(console.error);
