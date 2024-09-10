@@ -4,9 +4,7 @@
   "main": "main.js",
   "license": "MIT",
   "scripts": {
-    "swap": "ts-node src/main.ts",
-    "test": "ts-node src/test.ts",
-    "orca": "ts-node src/orca.ts"
+    "swap": "ts-node src/main.ts"
   },
   "author": "",
   "dependencies": {
